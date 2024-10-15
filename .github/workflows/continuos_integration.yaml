@@ -1,0 +1,56 @@
+name: Continuous Integration
+on:
+  push:
+  pull_request:
+    types: [opened, reopened]
+    branches: "feature/**"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '22'
+
+      - name: Update and Upgrade Ubuntu Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+
+      - name: Install Docker and Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install --only-upgrade -y docker.io
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo apt-get install -y curl
+
+          # Baixar a versão mais recente do Docker Compose
+          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+          sudo curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          
+          # Tornar o Docker Compose executável
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Verify Docker and Docker Compose Installation
+        run: |
+          docker --version
+          docker-compose --version
+
+      - name: Debug Docker Compose File
+        run: |
+          cat /usr/local/bin/docker-compose
+
+      - name: Build and Start Containers
+        run: |
+          docker-compose up -d --build
+
+      - name: Stop and Remove Containers
+        run: |
+          docker-compose down
